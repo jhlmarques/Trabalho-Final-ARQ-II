@@ -47,7 +47,7 @@ class StackMachine{
 //Returns a string containg the latest error message
 string StackMachine::get_error_message(){
     stringstream ss;
-    ss << "At line " << error_line << " ";
+    ss << "At line " << error_line << ": ";
     
     switch(error_code){
         case ERROR_SYNTAX:
@@ -60,7 +60,7 @@ string StackMachine::get_error_message(){
             ss << "Invalid argument.";
             break;
         case ERROR_POP_EMPTY_STACK:
-            ss << "Tried to pop and empty stack.";
+            ss << "Tried to pop an empty stack.";
             break;
         case ERROR_PUSH_FULL_STACK:
             ss << "Tried to push to a full stack.";
@@ -135,8 +135,8 @@ bool StackMachine::load_instructions(const char* filename){
             s_param = line.substr(param_separator+1);
 
             //Check for syntax errors
-            if(line == "ADD" || line == "SUB" || line == "MUL" || line == "DIV" || line == "MOD" || line == "NOT" ||\
-            line == "OR" || line == "AND" || line == "MIR" || line == "PUSH" || line == "POP" || line == "OUT"){
+            if(s_inst == "ADD" || s_inst == "SUB" || s_inst == "MUL" || s_inst == "DIV" || s_inst == "MOD" || s_inst == "NOT" ||\
+            s_inst == "OR" || s_inst == "AND" || s_inst == "MIR" || s_inst == "POP" || s_inst == "OUT"){
                 error_code = ERROR_SYNTAX;
                 error_line = line_counter;
                 return false;
@@ -188,5 +188,5 @@ int main(){
         cout << SM.get_error_message() << endl;
     }
     */
-
+    
 }
