@@ -1,18 +1,19 @@
-//Instructions with two operands which are in the stack
-#define ADD 1
-#define SUB 2
-#define MUL 3
-#define DIV 4
-#define MOD 5
-//Instructions with one operand which is in the stack
-#define NOT 6
-#define OR 7
-#define AND 8
-#define MIR 9
-#define OUT 10
-#define POP 11
-//Instructions with one operand
-#define PUSH 12
+
+enum Instructions{
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    MOD,
+    NOT,
+    OR,
+    AND,
+    MIR,
+    OUT,
+    POP,
+    PUSH,
+    PUSH_R
+};
 
 
 //Error codes
