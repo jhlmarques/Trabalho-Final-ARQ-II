@@ -15,8 +15,8 @@ using namespace std;
 
 class StackMachine{
     private:
-        unsigned int instruction_pointer;
-        unsigned int stack_pointer;
+        unsigned int instruction_pointer = 0;
+        unsigned int stack_pointer = 0;
         short int reg; //R register
         short int stack[128]; //Stack
 
@@ -35,20 +35,160 @@ class StackMachine{
         bool _and();
         bool _mir();
         bool _push();
+        bool _push_r();
         bool _pop();
         bool _out();
 
+
     public:
         bool load_instructions(const char* filename);
+        bool execute_instructions();
+        void append_test(int);
+        void print_reg();
         string get_error_message();
 
 };
+
+void StackMachine::print_reg(){
+    cout << "$R value: " << reg << endl;
+}
+
+void StackMachine::append_test(int n){
+    stack[stack_pointer] = n;
+    stack_pointer++;
+}
+
+bool StackMachine::_add(){
+    if (stack_pointer >= 2){
+        reg = stack[stack_pointer-1] + stack[stack_pointer-2];
+        return true;
+    }
+    else{
+        error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        return false;
+    }
+}
+
+bool StackMachine::_sub(){
+    if (stack_pointer >= 2){
+        reg = stack[stack_pointer-1] - stack[stack_pointer-2];
+        return true;
+    }
+    else{
+        error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        return false;
+    }
+}
+
+bool StackMachine::_mul(){
+    if (stack_pointer >= 2){
+        reg = stack[stack_pointer-1] * stack[stack_pointer-2];
+        return true;
+    }
+    else{
+        error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        return false;
+    }
+}
+
+bool StackMachine::_div(){
+    if (stack_pointer < 2){
+        error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        return false;
+    }
+    else if (stack[stack_pointer-1] == 0){ // Denominator is 0
+        error_code = ERROR_INVALID_ARGUMENT;
+        return false;
+    }
+    else{
+        reg = stack[stack_pointer-1] / stack[stack_pointer-2];
+        return true;
+    }
+}
+
+bool StackMachine::_mod(){
+    if (stack_pointer < 2){
+        error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        return false;
+    }
+    else if (stack[stack_pointer-1] == 0){ // Denominator is 0
+        error_code = ERROR_INVALID_ARGUMENT;
+        return false;
+    }
+    else{
+        reg = stack[stack_pointer-1] % stack[stack_pointer-2];
+        return true;
+    }
+}
+
+bool StackMachine::_out(){
+    if (stack_pointer < 1){
+        error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        return false;
+    }
+    else{
+        cout << "Top of the stack: " << stack[stack_pointer-1] << endl;
+        return true;
+    }
+
+}
+
+// Execute the instructions of the instruction vector
+bool StackMachine::execute_instructions(){
+    bool sucess;
+    for (instruction_pointer; instruction_pointer < instructions.size(); instruction_pointer++){
+        switch(instructions[instruction_pointer].first){
+            case ADD:
+                sucess = _add();
+                break;
+            case SUB:
+                sucess = _sub();
+                break;
+            case MUL:
+                sucess = _mul();
+                break;
+            case DIV:
+                sucess = _div();
+                break;
+            case MOD:
+                sucess = _mod();
+                break;
+//            case NOT:
+//                sucess = _not();
+//                break;
+//            case OR:
+//                sucess = _or();
+//                break;
+//            case AND:
+//                sucess = _and();
+//                break;
+//            case MIR:
+//                sucess = _mir();
+//                break;
+            case OUT:
+                sucess = _out();
+                break;
+//            case POP:
+//                sucess = _pop();
+//                break;
+//            case PUSH:
+//                sucess = _push();
+//                break;
+//            case PUSH_R:
+//                sucess = _push_r();
+//                break;
+        }
+        if (!sucess)
+            return false;
+    }
+    return true;
+}
 
 //Returns a string containg the latest error message
 string StackMachine::get_error_message(){
     stringstream ss;
     ss << "At line " << error_line << ": ";
-    
+
     switch(error_code){
         case ERROR_SYNTAX:
             ss << "Invalid syntax.";
@@ -65,7 +205,10 @@ string StackMachine::get_error_message(){
         case ERROR_PUSH_FULL_STACK:
             ss << "Tried to push to a full stack.";
             break;
-    } 
+       case ERROR_NOT_ENOUGH_PARAMETERS:
+            ss << "Not enough input parameters.";
+            break;
+    }
 
     return ss.str();
 }
@@ -83,7 +226,7 @@ bool StackMachine::load_instructions(const char* filename){
 
     while(getline(file, line)){
         param_separator = line.find(' ');
-        
+
         if(param_separator >= line.length()){ //No parameter
             param = 0;
             if(line == "ADD"){
@@ -150,7 +293,7 @@ bool StackMachine::load_instructions(const char* filename){
                 else{
                     //Check if the string only has digits
                     is_only_digits = (s_param.find_first_not_of( "0123456789" ) == string::npos);
-                    
+
                     if(!is_only_digits){
                         error_code = ERROR_INVALID_ARGUMENT;
                         error_line = line_counter;
@@ -165,7 +308,7 @@ bool StackMachine::load_instructions(const char* filename){
                 error_line = line_counter;
                 return false;
             }
-            
+
         }
 
         //Add the new instruction
@@ -182,11 +325,16 @@ bool StackMachine::load_instructions(const char* filename){
 
 int main(){
     StackMachine SM;
-    /*
-    bool result = SM.load_instructions("test.txt");
+
+    bool result = SM.load_instructions("test2.txt");
     if (!result){
         cout << SM.get_error_message() << endl;
     }
-    */
-    
+    SM.append_test(2);
+    SM.append_test(3);
+    bool success = SM.execute_instructions();
+    if (!success)
+        cout << SM.get_error_message() << endl;
+    SM.print_reg();
+    return 0;
 }
