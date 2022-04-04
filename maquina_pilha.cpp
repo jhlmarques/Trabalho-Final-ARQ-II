@@ -47,6 +47,8 @@ class StackMachine{
 
 };
 
+// Arithmetic operations
+
 bool StackMachine::_add(){
     if (stack_pointer >= 2){
         reg = stack[stack_pointer-1] + stack[stack_pointer-2];
@@ -54,6 +56,7 @@ bool StackMachine::_add(){
     }
     else{
         error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        error_line = instruction_pointer + 1;
         return false;
     }
 }
@@ -65,6 +68,7 @@ bool StackMachine::_sub(){
     }
     else{
         error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        error_line = instruction_pointer + 1;
         return false;
     }
 }
@@ -76,6 +80,7 @@ bool StackMachine::_mul(){
     }
     else{
         error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        error_line = instruction_pointer + 1;
         return false;
     }
 }
@@ -83,10 +88,12 @@ bool StackMachine::_mul(){
 bool StackMachine::_div(){
     if (stack_pointer < 2){
         error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        error_line = instruction_pointer + 1;
         return false;
     }
     else if (stack[stack_pointer-1] == 0){ // Denominator is 0
         error_code = ERROR_INVALID_ARGUMENT;
+        error_line = instruction_pointer + 1;
         return false;
     }
     else{
@@ -98,10 +105,12 @@ bool StackMachine::_div(){
 bool StackMachine::_mod(){
     if (stack_pointer < 2){
         error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        error_line = instruction_pointer + 1;
         return false;
     }
     else if (stack[stack_pointer-1] == 0){ // Denominator is 0
         error_code = ERROR_INVALID_ARGUMENT;
+        error_line = instruction_pointer + 1;
         return false;
     }
     else{
@@ -113,6 +122,7 @@ bool StackMachine::_mod(){
 bool StackMachine::_out(){
     if (stack_pointer < 1){
         error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        error_line = instruction_pointer + 1;
         return false;
     }
     else{
@@ -122,9 +132,12 @@ bool StackMachine::_out(){
 
 }
 
+// Logic operations
+
 bool StackMachine::_not(){
     if (stack_pointer < 1){
         error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        error_line = instruction_pointer + 1;
         return false;
     }
     else{
@@ -136,6 +149,7 @@ bool StackMachine::_not(){
 bool StackMachine::_and(){
     if (stack_pointer < 2){
         error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        error_line = instruction_pointer + 1;
         return false;
     }
     else{
@@ -147,6 +161,7 @@ bool StackMachine::_and(){
 bool StackMachine::_or(){
     if (stack_pointer < 2){
         error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        error_line = instruction_pointer + 1;
         return false;
     }
     else{
@@ -156,12 +171,24 @@ bool StackMachine::_or(){
 }
 
 bool StackMachine::_mir(){
-    if (stack_pointer < 2){
+    if (stack_pointer < 1){
         error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        error_line = instruction_pointer + 1;
         return false;
     }
     else{
-        reg = stack[stack_pointer-1] | stack[stack_pointer-2];
+        unsigned int rev = 0;
+        unsigned int temp = stack[stack_pointer-1];
+        while (temp > 0){
+            // bitwise left shift
+            rev <<= 1;
+            // if current bit is '1'
+            if (temp & 1 == 1)
+                rev ^= 1;
+            // bitwise right shift
+            temp >>= 1;
+            }
+        reg = rev;
         return true;
     }
 }
@@ -185,18 +212,18 @@ bool StackMachine::execute_instructions(){
             case MOD:
                 sucess = _mod();
                 break;
-//            case NOT:
-//                sucess = _not();
-//                break;
-//            case OR:
-//                sucess = _or();
-//                break;
-//            case AND:
-//                sucess = _and();
-//                break;
-//            case MIR:
-//                sucess = _mir();
-//                break;
+            case NOT:
+                sucess = _not();
+                break;
+            case OR:
+                sucess = _or();
+                break;
+            case AND:
+                sucess = _and();
+                break;
+            case MIR:
+                sucess = _mir();
+                break;
             case OUT:
                 sucess = _out();
                 break;
