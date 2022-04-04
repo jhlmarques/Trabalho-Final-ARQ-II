@@ -43,20 +43,9 @@ class StackMachine{
     public:
         bool load_instructions(const char* filename);
         bool execute_instructions();
-        void append_test(int);
-        void print_reg();
         string get_error_message();
 
 };
-
-void StackMachine::print_reg(){
-    cout << "$R value: " << reg << endl;
-}
-
-void StackMachine::append_test(int n){
-    stack[stack_pointer] = n;
-    stack_pointer++;
-}
 
 bool StackMachine::_add(){
     if (stack_pointer >= 2){
@@ -133,6 +122,49 @@ bool StackMachine::_out(){
 
 }
 
+bool StackMachine::_not(){
+    if (stack_pointer < 1){
+        error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        return false;
+    }
+    else{
+        reg = ~stack[stack_pointer-1];
+        return true;
+    }
+}
+
+bool StackMachine::_and(){
+    if (stack_pointer < 2){
+        error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        return false;
+    }
+    else{
+        reg = stack[stack_pointer-1] & stack[stack_pointer-2];
+        return true;
+    }
+}
+
+bool StackMachine::_or(){
+    if (stack_pointer < 2){
+        error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        return false;
+    }
+    else{
+        reg = stack[stack_pointer-1] | stack[stack_pointer-2];
+        return true;
+    }
+}
+
+bool StackMachine::_mir(){
+    if (stack_pointer < 2){
+        error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        return false;
+    }
+    else{
+        reg = stack[stack_pointer-1] | stack[stack_pointer-2];
+        return true;
+    }
+}
 // Execute the instructions of the instruction vector
 bool StackMachine::execute_instructions(){
     bool sucess;
@@ -330,11 +362,8 @@ int main(){
     if (!result){
         cout << SM.get_error_message() << endl;
     }
-    SM.append_test(2);
-    SM.append_test(3);
     bool success = SM.execute_instructions();
     if (!success)
         cout << SM.get_error_message() << endl;
-    SM.print_reg();
     return 0;
 }
