@@ -194,50 +194,50 @@ bool StackMachine::_mir(){
 }
 // Execute the instructions of the instruction vector
 bool StackMachine::execute_instructions(){
-    bool sucess;
+    bool success;
     for (instruction_pointer; instruction_pointer < instructions.size(); instruction_pointer++){
         switch(instructions[instruction_pointer].first){
             case ADD:
-                sucess = _add();
+                success = _add();
                 break;
             case SUB:
-                sucess = _sub();
+                success = _sub();
                 break;
             case MUL:
-                sucess = _mul();
+                success = _mul();
                 break;
             case DIV:
-                sucess = _div();
+                success = _div();
                 break;
             case MOD:
-                sucess = _mod();
+                success = _mod();
                 break;
             case NOT:
-                sucess = _not();
+                success = _not();
                 break;
             case OR:
-                sucess = _or();
+                success = _or();
                 break;
             case AND:
-                sucess = _and();
+                success = _and();
                 break;
             case MIR:
-                sucess = _mir();
+                success = _mir();
                 break;
             case OUT:
-                sucess = _out();
+                success = _out();
                 break;
 //            case POP:
-//                sucess = _pop();
+//                success = _pop();
 //                break;
 //            case PUSH:
-//                sucess = _push();
+//                success = _push();
 //                break;
 //            case PUSH_R:
-//                sucess = _push_r();
+//                success = _push_r();
 //                break;
         }
-        if (!sucess)
+        if (!success)
             return false;
     }
     return true;
