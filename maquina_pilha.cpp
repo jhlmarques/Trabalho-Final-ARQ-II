@@ -6,9 +6,7 @@
 #include <vector>
 #include "defines.h"
 
-
 using namespace std;
-
 
 //Stack Machine
 //
@@ -38,14 +36,78 @@ class StackMachine{
         bool _push_r();
         bool _pop();
         bool _out();
-
+        bool _top();
 
     public:
         bool load_instructions(const char* filename);
         bool execute_instructions();
         string get_error_message();
-
 };
+
+// Control operations
+
+bool StackMachine::_pop()
+{
+    if (stack_pointer >= 1)
+    {
+        stack_pointer--;
+        stack[stack_pointer] = 0;
+        return true;
+    }
+    else
+    {
+        error_code = ERROR_POP_EMPTY_STACK;
+        error_line = instruction_pointer + 1;
+        return false;
+    }
+}
+
+bool StackMachine::_push()
+{
+    if (stack_pointer <= 127)
+    {
+        stack[stack_pointer] = instructions[instruction_pointer].second;
+        stack_pointer++;
+        return true;
+    }
+    else
+    {
+        error_code = ERROR_PUSH_FULL_STACK;
+        error_line = instruction_pointer + 1;
+        return false;
+    }
+}
+
+bool StackMachine::_push_r()
+{
+    if (stack_pointer <= 127)
+    {
+        stack[stack_pointer] = reg;
+        stack_pointer++;
+        return true;
+    }
+    else
+    {
+        error_code = ERROR_PUSH_FULL_STACK;
+        error_line = instruction_pointer + 1;
+        return false;
+    }
+}
+
+bool StackMachine::_top()
+{
+    if (stack_pointer >= 1)
+    {
+        reg = stack[stack_pointer-1];
+        return true;
+    }
+    else
+    {
+        error_code = ERROR_NOT_ENOUGH_PARAMETERS;
+        error_line = instruction_pointer + 1;
+        return false;
+    }
+}
 
 // Arithmetic operations
 
@@ -227,15 +289,17 @@ bool StackMachine::execute_instructions(){
             case OUT:
                 success = _out();
                 break;
-//            case POP:
-//                success = _pop();
-//                break;
-//            case PUSH:
-//                success = _push();
-//                break;
-//            case PUSH_R:
-//                success = _push_r();
-//                break;
+            case POP:
+                success = _pop();
+                break;
+            case PUSH:
+                success = _push();
+                break;
+            case PUSH_R:
+                success = _push_r();
+                break;
+            case TOP:
+                success = _top();
         }
         if (!success)
             return false;
@@ -321,7 +385,10 @@ bool StackMachine::load_instructions(const char* filename){
             else if(line == "OUT"){
                 inst = OUT;
             }
-            else if(line == "PUSH"){
+            else if (line == "TOP"){
+                inst = TOP;
+            }
+            else if (line == "PUSH"){
                 error_code = ERROR_SYNTAX;
                 error_line = line_counter;
                 return false;
@@ -337,8 +404,8 @@ bool StackMachine::load_instructions(const char* filename){
             s_param = line.substr(param_separator+1);
 
             //Check for syntax errors
-            if(s_inst == "ADD" || s_inst == "SUB" || s_inst == "MUL" || s_inst == "DIV" || s_inst == "MOD" || s_inst == "NOT" ||\
-            s_inst == "OR" || s_inst == "AND" || s_inst == "MIR" || s_inst == "POP" || s_inst == "OUT"){
+            if (s_inst == "ADD" || s_inst == "SUB" || s_inst == "MUL" || s_inst == "DIV" || s_inst == "MOD" || s_inst == "NOT" ||
+                s_inst == "OR" || s_inst == "AND" || s_inst == "MIR" || s_inst == "POP" || s_inst == "OUT" || s_inst == "TOP"){
                 error_code = ERROR_SYNTAX;
                 error_line = line_counter;
                 return false;
@@ -367,7 +434,6 @@ bool StackMachine::load_instructions(const char* filename){
                 error_line = line_counter;
                 return false;
             }
-
         }
 
         //Add the new instruction

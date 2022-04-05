@@ -12,9 +12,9 @@ enum Instructions{
     OUT,
     POP,
     PUSH,
-    PUSH_R
+    PUSH_R,
+    TOP
 };
-
 
 //Error codes
 #define ERROR_SYNTAX 0
