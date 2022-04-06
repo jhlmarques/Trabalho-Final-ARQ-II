@@ -36,17 +36,23 @@ class StackMachine{
     private:
         unsigned int instruction_pointer = 0;
         unsigned int stack_pointer = 0;
-        short int reg; //R register
+        
+        vector<short int> registers; //All registers
         short int stack[128]; //Stack
 
-        map<string, InstructionData> map_instructions; //The machine's allowed instructions
-
-
         vector<pair<int, vector<int>>> instructions; //Instructions loaded from the current file
+
+        map<string, InstructionData> map_instructions; //The machine's allowed instructions
+        map<string, int> map_registers; //The machine's allowed registers
+
 
         int error_code = -1; //Current error code
         int error_line = -1;
 
+        //Register logic
+        inline void add_register(string label);
+
+        //Instruction handlers
 
         bool _add();
         bool _sub();
@@ -62,9 +68,15 @@ class StackMachine{
         bool _pop();
         bool _out();
         bool _top();
+        bool _mov();
 
     public:
         StackMachine(){
+            //Create registers
+            add_register("R");
+            add_register("A");
+            add_register("B");
+
             //Fills the instructions map
             map_instructions.insert(pair<string, InstructionData>("ADD",    InstructionData(ADD, 0, false, false)));
             map_instructions.insert(pair<string, InstructionData>("SUB",    InstructionData(SUB, 0, false, false)));
@@ -78,16 +90,23 @@ class StackMachine{
             map_instructions.insert(pair<string, InstructionData>("POP",    InstructionData(POP, 0, false, false)));
             map_instructions.insert(pair<string, InstructionData>("OUT",    InstructionData(OUT, 0, false, false)));
             map_instructions.insert(pair<string, InstructionData>("PUSH",   InstructionData(PUSH, 1, true, true)));
-            map_instructions.insert(pair<string, InstructionData>("TOP",   InstructionData(PUSH, 0, false, false)));
+            map_instructions.insert(pair<string, InstructionData>("TOP",   InstructionData(TOP, 0, false, false)));
+            map_instructions.insert(pair<string, InstructionData>("MOV",   InstructionData(MOV, 2, true, false)));
         }
 
+        void set_register(int r_code, int value);
+        short int get_register(int r_code);
 
         bool load_instructions(const char* filename);
         bool execute_instructions();
         string get_error_message();
 };
 
-// Control operations
+/*
+
+                Control operations
+
+*/
 
 bool StackMachine::_pop()
 {
@@ -125,7 +144,7 @@ bool StackMachine::_push_r()
 {
     if (stack_pointer <= 127)
     {
-        stack[stack_pointer] = reg;
+        stack[stack_pointer] = get_register(DEFAULT_REG);
         stack_pointer++;
         return true;
     }
@@ -141,7 +160,7 @@ bool StackMachine::_top()
 {
     if (stack_pointer >= 1)
     {
-        reg = stack[stack_pointer-1];
+        set_register(DEFAULT_REG, stack[stack_pointer-1]);
         return true;
     }
     else
@@ -152,11 +171,26 @@ bool StackMachine::_top()
     }
 }
 
-// Arithmetic operations
+bool StackMachine::_mov(){
+    int reg_A = instructions[instruction_pointer].second[0];
+    int reg_B = instructions[instruction_pointer].second[1];
+
+    set_register(reg_A, get_register(reg_B));
+
+    return true;
+}
+
+
+
+/*
+
+            Arithmetic operations
+
+*/
 
 bool StackMachine::_add(){
     if (stack_pointer >= 2){
-        reg = stack[stack_pointer-1] + stack[stack_pointer-2];
+        set_register(DEFAULT_REG, stack[stack_pointer-1] + stack[stack_pointer-2]);
         return true;
     }
     else{
@@ -168,7 +202,7 @@ bool StackMachine::_add(){
 
 bool StackMachine::_sub(){
     if (stack_pointer >= 2){
-        reg = stack[stack_pointer-1] - stack[stack_pointer-2];
+        set_register(DEFAULT_REG, stack[stack_pointer-1] - stack[stack_pointer-2]);
         return true;
     }
     else{
@@ -180,7 +214,7 @@ bool StackMachine::_sub(){
 
 bool StackMachine::_mul(){
     if (stack_pointer >= 2){
-        reg = stack[stack_pointer-1] * stack[stack_pointer-2];
+        set_register(DEFAULT_REG, stack[stack_pointer-1] * stack[stack_pointer-2]);
         return true;
     }
     else{
@@ -202,7 +236,7 @@ bool StackMachine::_div(){
         return false;
     }
     else{
-        reg = stack[stack_pointer-1] / stack[stack_pointer-2];
+        set_register(DEFAULT_REG, stack[stack_pointer-1] / stack[stack_pointer-2]);
         return true;
     }
 }
@@ -219,7 +253,7 @@ bool StackMachine::_mod(){
         return false;
     }
     else{
-        reg = stack[stack_pointer-1] % stack[stack_pointer-2];
+        set_register(DEFAULT_REG, stack[stack_pointer-1] % stack[stack_pointer-2]);
         return true;
     }
 }
@@ -237,7 +271,12 @@ bool StackMachine::_out(){
 
 }
 
-// Logic operations
+/*
+
+                Logic operations
+
+
+*/
 
 bool StackMachine::_not(){
     if (stack_pointer < 1){
@@ -246,7 +285,7 @@ bool StackMachine::_not(){
         return false;
     }
     else{
-        reg = ~stack[stack_pointer-1];
+        set_register(DEFAULT_REG, ~stack[stack_pointer-1]);
         return true;
     }
 }
@@ -258,7 +297,7 @@ bool StackMachine::_and(){
         return false;
     }
     else{
-        reg = stack[stack_pointer-1] & stack[stack_pointer-2];
+        set_register(DEFAULT_REG, stack[stack_pointer-1] & stack[stack_pointer-2]);
         return true;
     }
 }
@@ -270,7 +309,7 @@ bool StackMachine::_or(){
         return false;
     }
     else{
-        reg = stack[stack_pointer-1] | stack[stack_pointer-2];
+        set_register(DEFAULT_REG, stack[stack_pointer-1] | stack[stack_pointer-2]);
         return true;
     }
 }
@@ -293,7 +332,7 @@ bool StackMachine::_mir(){
             // bitwise right shift
             temp >>= 1;
             }
-        reg = rev;
+        set_register(DEFAULT_REG, rev);
         return true;
     }
 }
@@ -343,9 +382,23 @@ bool StackMachine::execute_instructions(){
                 break;
             case TOP:
                 success = _top();
+                break;
+            case MOV:
+                success = _mov();
+                break;
+
         }
         if (!success)
             return false;
+        
+        #ifdef DEBUG
+        cout << "Registers: ";
+        for (auto x : registers){
+            cout << x << " ";
+        } 
+        cout << endl;
+        #endif
+
     }
     return true;
 }
@@ -383,6 +436,23 @@ string StackMachine::get_error_message(){
     return ss.str();
 }
 
+//Adds a register to the machine (does not check for duplicates)
+inline void StackMachine::add_register(string label){
+    map_registers.insert(pair<string, int>(label, static_cast<int>(registers.size()))); 
+    registers.push_back(0);
+}
+
+void StackMachine::set_register(int r_code, int value){
+    registers[r_code] = value;
+}
+
+short int StackMachine::get_register(int r_code){
+    return registers[r_code];
+}
+
+
+
+
 //Loads instructions from a file
 bool StackMachine::load_instructions(const char* filename){
     ifstream file;
@@ -391,6 +461,7 @@ bool StackMachine::load_instructions(const char* filename){
     string line_substr;
     
     string parsed_instruction; //Instruction found in a line
+    string parsed_reg; //Label of a parsed register
     vector<string> parsed_parameters; //Parameters found in a line
 
     int line_counter = 1;
@@ -445,12 +516,14 @@ bool StackMachine::load_instructions(const char* filename){
                             error_line = line_counter;
                             return false;
                         }
-                        if(x.length() > 2){
+                        parsed_reg = x.substr(1);
+
+                        if(!map_registers.count(parsed_reg)){ //This register doesn't exist
                             error_code = ERROR_INVALID_ARGUMENT;
                             error_line = line_counter;
                             return false;
                         }
-                        instruction_parameters.push_back(static_cast<int>(x[1])); //Converts the register's character to int
+                        instruction_parameters.push_back(map_registers.at(parsed_reg)); //Converts the register's character to int
                     }
                     else{
                         if(x.find_first_not_of( "0123456789" ) != string::npos){

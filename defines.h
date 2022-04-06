@@ -13,8 +13,11 @@ enum Instructions{
     POP,
     PUSH,
     PUSH_R,
-    TOP
+    TOP,
+    MOV
 };
+
+#define DEFAULT_REG 0
 
 //Error codes
 #define ERROR_SYNTAX 0
