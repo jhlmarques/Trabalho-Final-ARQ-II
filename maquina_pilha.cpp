@@ -3,10 +3,31 @@
 #include <string>
 #include <sstream>
 #include <utility>
+#include <map>
 #include <vector>
 #include "defines.h"
 
+#define DEBUG
+
+
 using namespace std;
+
+//Dataclass containing info for the instruction parser
+struct InstructionData{
+    int code;               
+    int n_params;           //How many parameters does it have
+    bool accept_regs;       //Does it accept registers as a parameter?
+    bool accept_values;     //Does it accept values as a parameter
+
+    InstructionData(int code, int n_params, bool accept_regs, bool accept_values)
+        : code{code}
+        , n_params{n_params}
+        , accept_regs{accept_regs}
+        , accept_values{accept_values}
+        {}
+
+};
+
 
 //Stack Machine
 //
@@ -15,13 +36,23 @@ class StackMachine{
     private:
         unsigned int instruction_pointer = 0;
         unsigned int stack_pointer = 0;
-        short int reg; //R register
+        
+        vector<short int> registers; //All registers
         short int stack[128]; //Stack
 
-        vector<pair<int, int>> instructions; //Instructions loaded from the current file
+        vector<pair<int, vector<int>>> instructions; //Instructions loaded from the current file
+
+        map<string, InstructionData> map_instructions; //The machine's allowed instructions
+        map<string, int> map_registers; //The machine's allowed registers
+
 
         int error_code = -1; //Current error code
         int error_line = -1;
+
+        //Register logic
+        inline void add_register(string label);
+
+        //Instruction handlers
 
         bool _add();
         bool _sub();
@@ -37,14 +68,45 @@ class StackMachine{
         bool _pop();
         bool _out();
         bool _top();
+        bool _mov();
 
     public:
+        StackMachine(){
+            //Create registers
+            add_register("R");
+            add_register("A");
+            add_register("B");
+
+            //Fills the instructions map
+            map_instructions.insert(pair<string, InstructionData>("ADD",    InstructionData(ADD, 0, false, false)));
+            map_instructions.insert(pair<string, InstructionData>("SUB",    InstructionData(SUB, 0, false, false)));
+            map_instructions.insert(pair<string, InstructionData>("MUL",    InstructionData(MUL, 0, false, false)));
+            map_instructions.insert(pair<string, InstructionData>("DIV",    InstructionData(DIV, 0, false, false)));
+            map_instructions.insert(pair<string, InstructionData>("MOD",    InstructionData(MOD, 0, false, false)));
+            map_instructions.insert(pair<string, InstructionData>("NOT",    InstructionData(NOT, 0, false, false)));
+            map_instructions.insert(pair<string, InstructionData>("OR",     InstructionData(OR, 0, false, false)));
+            map_instructions.insert(pair<string, InstructionData>("AND",    InstructionData(AND, 0, false, false)));
+            map_instructions.insert(pair<string, InstructionData>("MIR",    InstructionData(MIR, 0, false, false)));
+            map_instructions.insert(pair<string, InstructionData>("POP",    InstructionData(POP, 0, false, false)));
+            map_instructions.insert(pair<string, InstructionData>("OUT",    InstructionData(OUT, 0, false, false)));
+            map_instructions.insert(pair<string, InstructionData>("PUSH",   InstructionData(PUSH, 1, true, true)));
+            map_instructions.insert(pair<string, InstructionData>("TOP",   InstructionData(TOP, 0, false, false)));
+            map_instructions.insert(pair<string, InstructionData>("MOV",   InstructionData(MOV, 2, true, false)));
+        }
+
+        void set_register(int r_code, int value);
+        short int get_register(int r_code);
+
         bool load_instructions(const char* filename);
         bool execute_instructions();
         string get_error_message();
 };
 
-// Control operations
+/*
+
+                Control operations
+
+*/
 
 bool StackMachine::_pop()
 {
@@ -66,7 +128,7 @@ bool StackMachine::_push()
 {
     if (stack_pointer <= 127)
     {
-        stack[stack_pointer] = instructions[instruction_pointer].second;
+        stack[stack_pointer] = instructions[instruction_pointer].second[0];
         stack_pointer++;
         return true;
     }
@@ -82,7 +144,7 @@ bool StackMachine::_push_r()
 {
     if (stack_pointer <= 127)
     {
-        stack[stack_pointer] = reg;
+        stack[stack_pointer] = get_register(DEFAULT_REG);
         stack_pointer++;
         return true;
     }
@@ -98,7 +160,7 @@ bool StackMachine::_top()
 {
     if (stack_pointer >= 1)
     {
-        reg = stack[stack_pointer-1];
+        set_register(DEFAULT_REG, stack[stack_pointer-1]);
         return true;
     }
     else
@@ -109,11 +171,26 @@ bool StackMachine::_top()
     }
 }
 
-// Arithmetic operations
+bool StackMachine::_mov(){
+    int reg_A = instructions[instruction_pointer].second[0];
+    int reg_B = instructions[instruction_pointer].second[1];
+
+    set_register(reg_A, get_register(reg_B));
+
+    return true;
+}
+
+
+
+/*
+
+            Arithmetic operations
+
+*/
 
 bool StackMachine::_add(){
     if (stack_pointer >= 2){
-        reg = stack[stack_pointer-1] + stack[stack_pointer-2];
+        set_register(DEFAULT_REG, stack[stack_pointer-1] + stack[stack_pointer-2]);
         return true;
     }
     else{
@@ -125,7 +202,7 @@ bool StackMachine::_add(){
 
 bool StackMachine::_sub(){
     if (stack_pointer >= 2){
-        reg = stack[stack_pointer-1] - stack[stack_pointer-2];
+        set_register(DEFAULT_REG, stack[stack_pointer-1] - stack[stack_pointer-2]);
         return true;
     }
     else{
@@ -137,7 +214,7 @@ bool StackMachine::_sub(){
 
 bool StackMachine::_mul(){
     if (stack_pointer >= 2){
-        reg = stack[stack_pointer-1] * stack[stack_pointer-2];
+        set_register(DEFAULT_REG, stack[stack_pointer-1] * stack[stack_pointer-2]);
         return true;
     }
     else{
@@ -159,7 +236,7 @@ bool StackMachine::_div(){
         return false;
     }
     else{
-        reg = stack[stack_pointer-1] / stack[stack_pointer-2];
+        set_register(DEFAULT_REG, stack[stack_pointer-1] / stack[stack_pointer-2]);
         return true;
     }
 }
@@ -176,7 +253,7 @@ bool StackMachine::_mod(){
         return false;
     }
     else{
-        reg = stack[stack_pointer-1] % stack[stack_pointer-2];
+        set_register(DEFAULT_REG, stack[stack_pointer-1] % stack[stack_pointer-2]);
         return true;
     }
 }
@@ -194,7 +271,12 @@ bool StackMachine::_out(){
 
 }
 
-// Logic operations
+/*
+
+                Logic operations
+
+
+*/
 
 bool StackMachine::_not(){
     if (stack_pointer < 1){
@@ -203,7 +285,7 @@ bool StackMachine::_not(){
         return false;
     }
     else{
-        reg = ~stack[stack_pointer-1];
+        set_register(DEFAULT_REG, ~stack[stack_pointer-1]);
         return true;
     }
 }
@@ -215,7 +297,7 @@ bool StackMachine::_and(){
         return false;
     }
     else{
-        reg = stack[stack_pointer-1] & stack[stack_pointer-2];
+        set_register(DEFAULT_REG, stack[stack_pointer-1] & stack[stack_pointer-2]);
         return true;
     }
 }
@@ -227,7 +309,7 @@ bool StackMachine::_or(){
         return false;
     }
     else{
-        reg = stack[stack_pointer-1] | stack[stack_pointer-2];
+        set_register(DEFAULT_REG, stack[stack_pointer-1] | stack[stack_pointer-2]);
         return true;
     }
 }
@@ -250,7 +332,7 @@ bool StackMachine::_mir(){
             // bitwise right shift
             temp >>= 1;
             }
-        reg = rev;
+        set_register(DEFAULT_REG, rev);
         return true;
     }
 }
@@ -300,9 +382,23 @@ bool StackMachine::execute_instructions(){
                 break;
             case TOP:
                 success = _top();
+                break;
+            case MOV:
+                success = _mov();
+                break;
+
         }
         if (!success)
             return false;
+        
+        #ifdef DEBUG
+        cout << "Registers: ";
+        for (auto x : registers){
+            cout << x << " ";
+        } 
+        cout << endl;
+        #endif
+
     }
     return true;
 }
@@ -328,117 +424,140 @@ string StackMachine::get_error_message(){
         case ERROR_PUSH_FULL_STACK:
             ss << "Tried to push to a full stack.";
             break;
-       case ERROR_NOT_ENOUGH_PARAMETERS:
+        case ERROR_NOT_ENOUGH_PARAMETERS:
             ss << "Not enough input parameters.";
             break;
+        case ERROR_INCORRECT_PARAMETER_TYPE:
+            ss << "One or more parameters have conflicting types.";
+            break;
+
     }
 
     return ss.str();
 }
+
+//Adds a register to the machine (does not check for duplicates)
+inline void StackMachine::add_register(string label){
+    map_registers.insert(pair<string, int>(label, static_cast<int>(registers.size()))); 
+    registers.push_back(0);
+}
+
+void StackMachine::set_register(int r_code, int value){
+    registers[r_code] = value;
+}
+
+short int StackMachine::get_register(int r_code){
+    return registers[r_code];
+}
+
+
+
 
 //Loads instructions from a file
 bool StackMachine::load_instructions(const char* filename){
     ifstream file;
     file.open(filename);
     string line;
-    string s_inst, s_param; //Substrings for lines with an instruction that has a parameter
-    int inst, param;
+    string line_substr;
+    
+    string parsed_instruction; //Instruction found in a line
+    string parsed_reg; //Label of a parsed register
+    vector<string> parsed_parameters; //Parameters found in a line
+
     int line_counter = 1;
-    int param_separator; //Does this instruction come with a parameter?
-    bool is_only_digits; //Does the parameter only contain digits
+    int param_separator; //Ending position of a parameter
+    bool param_is_reg; //The parameter is a register
 
     while(getline(file, line)){
+        parsed_parameters.clear();
+        
         param_separator = line.find(' ');
+        if(param_separator < line.length()){
+            parsed_instruction = line.substr(0, param_separator); //Get the instruction
+            line_substr = line.substr(param_separator+1); //Work with the rest of the string
+            
+            while((param_separator = line_substr.find(' ')) < line_substr.length()){
+                parsed_parameters.push_back(line_substr.substr(0, param_separator)); //Get the parameters
+                line_substr = line_substr.substr(param_separator+1);
+            }
+            parsed_parameters.push_back(line_substr);
 
-        if(param_separator >= line.length()){ //No parameter
-            param = 0;
-            if(line == "ADD"){
-                inst = ADD;
-            }
-            else if(line == "SUB"){
-                inst = SUB;
-            }
-            else if(line == "MUL"){
-                inst = MUL;
-            }
-            else if(line == "DIV"){
-                inst = DIV;
-            }
-            else if(line == "MOD"){
-                inst = MOD;
-            }
-            else if(line == "NOT"){
-                inst = NOT;
-            }
-            else if(line == "OR"){
-                inst = OR;
-            }
-            else if(line == "AND"){
-                inst = AND;
-            }
-            else if(line == "MIR"){
-                inst = MIR;
-            }
-            else if(line == "POP"){
-                inst = POP;
-            }
-            else if(line == "OUT"){
-                inst = OUT;
-            }
-            else if (line == "TOP"){
-                inst = TOP;
-            }
-            else if (line == "PUSH"){
-                error_code = ERROR_SYNTAX;
-                error_line = line_counter;
-                return false;
-            }
-            else{
-                error_code = ERROR_INVALID_INSTRUCTION;
-                error_line = line_counter;
-                return false;
-            }
         }
-        else{ //Has parameter (argument)
-            s_inst = line.substr(0, param_separator);
-            s_param = line.substr(param_separator+1);
+        else{
+            parsed_instruction = line;
+        }
 
-            //Check for syntax errors
-            if (s_inst == "ADD" || s_inst == "SUB" || s_inst == "MUL" || s_inst == "DIV" || s_inst == "MOD" || s_inst == "NOT" ||
-                s_inst == "OR" || s_inst == "AND" || s_inst == "MIR" || s_inst == "POP" || s_inst == "OUT" || s_inst == "TOP"){
+        //Try to get this instruction's data
+        try{
+            InstructionData& cur_instruction = map_instructions.at(parsed_instruction);
+            if(parsed_parameters.size() != cur_instruction.n_params){ //Incorrect parameter amount
                 error_code = ERROR_SYNTAX;
                 error_line = line_counter;
                 return false;
             }
 
-            if(s_inst == "PUSH"){
-                if(s_param == "$R"){
-                    param = 0;
-                    inst = PUSH_R;
-                }
-                else{
-                    //Check if the string only has digits
-                    is_only_digits = (s_param.find_first_not_of( "0123456789" ) == string::npos);
+            vector<int> instruction_parameters; //Parameters to be passed to the instruction
 
-                    if(!is_only_digits){
-                        error_code = ERROR_INVALID_ARGUMENT;
-                        error_line = line_counter;
-                        return false;
+            if(parsed_parameters.size()){
+                param_is_reg = (parsed_parameters[0][0] == '$'); //First parameter determines the type of all parameters in the line
+            
+                //The instruction doesn't allow this type of parameter
+                if(!cur_instruction.accept_regs && param_is_reg || !cur_instruction.accept_values && !param_is_reg){
+                    error_code = ERROR_INVALID_ARGUMENT;
+                    error_line = line_counter;
+                    return false;
+                }
+
+                //Convert the parameter strings to integers
+                for(string x : parsed_parameters){
+                    if(param_is_reg){
+                        if(x[0] != '$'){
+                            error_code = ERROR_INCORRECT_PARAMETER_TYPE;
+                            error_line = line_counter;
+                            return false;
+                        }
+                        parsed_reg = x.substr(1);
+
+                        if(!map_registers.count(parsed_reg)){ //This register doesn't exist
+                            error_code = ERROR_INVALID_ARGUMENT;
+                            error_line = line_counter;
+                            return false;
+                        }
+                        instruction_parameters.push_back(map_registers.at(parsed_reg)); //Converts the register's character to int
                     }
-                    inst = PUSH;
-                    param = stol(s_param);
+                    else{
+                        if(x.find_first_not_of( "0123456789" ) != string::npos){
+                            error_code = ERROR_INCORRECT_PARAMETER_TYPE;
+                            error_line = line_counter;
+                            return false;
+                        }
+                        instruction_parameters.push_back(stoi(x)); //Converts the parameter to a number
+                    }
                 }
             }
-            else{
-                error_code = ERROR_INVALID_ARGUMENT;
-                error_line = line_counter;
-                return false;
-            }
-        }
 
-        //Add the new instruction
-        instructions.push_back(make_pair(inst, param));
-        cout << inst << " " << param << endl;
+            //Finally, add the new instruction
+            //If the instruction accepts both values and registers, the "register version"'s code is equal to the
+            //instruction's code plus one.n
+            int instruction_code = param_is_reg && cur_instruction.accept_regs && \
+                                    cur_instruction.accept_values ? cur_instruction.code + 1 : cur_instruction.code;
+            
+            instructions.push_back(make_pair(instruction_code, instruction_parameters));
+    
+            #ifdef DEBUG
+            cout << instruction_code << " ";
+            for (auto x : instruction_parameters){
+                cout << x << " ";
+            }
+            cout << endl;
+            #endif
+
+        }
+        catch(out_of_range){
+            error_code = ERROR_INVALID_INSTRUCTION;
+            error_line = line_counter;
+            return false;
+        }
 
         line_counter++;
     }
@@ -451,7 +570,7 @@ bool StackMachine::load_instructions(const char* filename){
 int main(){
     StackMachine SM;
 
-    bool result = SM.load_instructions("test2.txt");
+    bool result = SM.load_instructions("test.txt");
     if (!result){
         cout << SM.get_error_message() << endl;
     }

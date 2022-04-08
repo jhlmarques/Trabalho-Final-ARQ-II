@@ -13,8 +13,11 @@ enum Instructions{
     POP,
     PUSH,
     PUSH_R,
-    TOP
+    TOP,
+    MOV
 };
+
+#define DEFAULT_REG 0
 
 //Error codes
 #define ERROR_SYNTAX 0
@@ -23,3 +26,4 @@ enum Instructions{
 #define ERROR_POP_EMPTY_STACK 3
 #define ERROR_PUSH_FULL_STACK 4
 #define ERROR_NOT_ENOUGH_PARAMETERS 5
+#define ERROR_INCORRECT_PARAMETER_TYPE 6
