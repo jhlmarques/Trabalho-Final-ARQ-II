@@ -7,7 +7,7 @@
 #include <vector>
 #include "defines.h"
 
-#define DEBUG
+//#define DEBUG
 
 
 using namespace std;
@@ -36,6 +36,8 @@ class StackMachine{
     private:
         unsigned int instruction_pointer = 0;
         unsigned int stack_pointer = 0;
+        unsigned int flags = 0;
+
         
         vector<short int> registers; //All registers
         short int stack[128]; //Stack
@@ -69,6 +71,12 @@ class StackMachine{
         bool _out();
         bool _top();
         bool _mov();
+        bool _jmp();
+        bool _jmp_r();
+        bool _jn();
+        bool _jn_r();
+        bool _jnz();
+        bool _jnz_r();
 
     public:
         StackMachine(){
@@ -76,6 +84,7 @@ class StackMachine{
             add_register("R");
             add_register("A");
             add_register("B");
+            add_register("C");
 
             //Fills the instructions map
             map_instructions.insert(pair<string, InstructionData>("ADD",    InstructionData(ADD, 0, false, false)));
@@ -92,6 +101,9 @@ class StackMachine{
             map_instructions.insert(pair<string, InstructionData>("PUSH",   InstructionData(PUSH, 1, true, true)));
             map_instructions.insert(pair<string, InstructionData>("TOP",   InstructionData(TOP, 0, false, false)));
             map_instructions.insert(pair<string, InstructionData>("MOV",   InstructionData(MOV, 2, true, false)));
+            map_instructions.insert(pair<string, InstructionData>("JMP",   InstructionData(JMP, 1, true, true)));
+            map_instructions.insert(pair<string, InstructionData>("JN",   InstructionData(JN, 1, true, true)));
+            map_instructions.insert(pair<string, InstructionData>("JNZ",   InstructionData(JNZ, 1, true, true)));
         }
 
         void set_register(int r_code, int value);
@@ -179,6 +191,95 @@ bool StackMachine::_mov(){
 
     return true;
 }
+
+bool StackMachine::_jmp(){
+    int new_pos = instructions[instruction_pointer].second[0];
+    if(new_pos > instructions.size()){
+        error_code = ERROR_JUMP_OUT_OF_BOUNDS;
+        error_line = instruction_pointer + 1;
+        return false;
+    }
+
+    instruction_pointer = new_pos;
+    return true;
+}
+
+bool StackMachine::_jmp_r(){
+    int new_pos = get_register(instructions[instruction_pointer].second[0]);
+    if(new_pos > instructions.size()){
+        error_code = ERROR_JUMP_OUT_OF_BOUNDS;
+        error_line = instruction_pointer + 1;
+        return false;
+    }
+
+    instruction_pointer = new_pos;
+    return true;
+}
+
+bool StackMachine::_jn(){
+    if(!(flags & FLAG_NEGATIVE)){
+        return true;
+    }
+
+    int new_pos = instructions[instruction_pointer].second[0];
+    if(new_pos > instructions.size()){
+        error_code = ERROR_JUMP_OUT_OF_BOUNDS;
+        error_line = instruction_pointer + 1;
+        return false;
+    }
+
+    instruction_pointer = new_pos;
+    return true;
+}
+
+bool StackMachine::_jn_r(){
+    if(!(flags & FLAG_NEGATIVE)){
+        return true;
+    }
+
+    int new_pos = get_register(instructions[instruction_pointer].second[0]);
+    if(new_pos > instructions.size()){
+        error_code = ERROR_JUMP_OUT_OF_BOUNDS;
+        error_line = instruction_pointer + 1;
+        return false;
+    }    
+
+    instruction_pointer = new_pos;
+    return true;
+}
+
+bool StackMachine::_jnz(){
+    if(flags & FLAG_ZERO){
+        return true;
+    }
+
+    int new_pos = instructions[instruction_pointer].second[0];
+    if(new_pos > instructions.size()){
+        error_code = ERROR_JUMP_OUT_OF_BOUNDS;
+        error_line = instruction_pointer + 1;
+        return false;
+    }
+
+    instruction_pointer = new_pos;
+    return true;
+}
+
+bool StackMachine::_jnz_r(){
+    if(flags & FLAG_ZERO){
+        return true;
+    }
+
+    int new_pos = get_register(instructions[instruction_pointer].second[0]);
+    if(new_pos > instructions.size()){
+        error_code = ERROR_JUMP_OUT_OF_BOUNDS;
+        error_line = instruction_pointer + 1;
+        return false;
+    }
+
+    instruction_pointer = new_pos;
+    return true;
+}
+
 
 
 
@@ -340,6 +441,13 @@ bool StackMachine::_mir(){
 bool StackMachine::execute_instructions(){
     bool success;
     for (instruction_pointer; instruction_pointer < instructions.size(); instruction_pointer++){
+        cout << "> Pos: " << instruction_pointer + 1 << " ";
+        cout << "Registers: ";
+        for (auto x : registers){
+            cout << x << " ";
+        } 
+        cout << endl;
+        
         switch(instructions[instruction_pointer].first){
             case ADD:
                 success = _add();
@@ -386,19 +494,29 @@ bool StackMachine::execute_instructions(){
             case MOV:
                 success = _mov();
                 break;
+            case JMP:
+                success = _jmp();
+                break;
+            case JMP_R:
+                success = _jmp_r();
+                break;
+            case JN:
+                success = _jn();
+                break;
+            case JN_R:
+                success = _jn_r();
+                break;
+            case JNZ:
+                success = _jnz();
+                break;
+            case JNZ_R:
+                success = _jnz_r();
+                break;
+
 
         }
         if (!success)
             return false;
-        
-        #ifdef DEBUG
-        cout << "Registers: ";
-        for (auto x : registers){
-            cout << x << " ";
-        } 
-        cout << endl;
-        #endif
-
     }
     return true;
 }
@@ -430,6 +548,9 @@ string StackMachine::get_error_message(){
         case ERROR_INCORRECT_PARAMETER_TYPE:
             ss << "One or more parameters have conflicting types.";
             break;
+        case ERROR_JUMP_OUT_OF_BOUNDS:
+            ss << "Tried to jump to an invalid adress.";
+            break;
 
     }
 
@@ -444,6 +565,15 @@ inline void StackMachine::add_register(string label){
 
 void StackMachine::set_register(int r_code, int value){
     registers[r_code] = value;
+    if(r_code == DEFAULT_REG){
+        if(value < 1){
+            flags |= (value == 0 ? FLAG_ZERO : FLAG_NEGATIVE);
+        }
+        else{
+            flags &= ~(FLAG_ZERO | FLAG_NEGATIVE);
+        }
+    }
+
 }
 
 short int StackMachine::get_register(int r_code){
@@ -574,8 +704,11 @@ int main(){
     if (!result){
         cout << SM.get_error_message() << endl;
     }
-    bool success = SM.execute_instructions();
-    if (!success)
-        cout << SM.get_error_message() << endl;
+    else{
+        bool success = SM.execute_instructions();
+        if (!success){
+            cout << SM.get_error_message() << endl;
+        }
+    }
     return 0;
 }
