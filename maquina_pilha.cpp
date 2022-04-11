@@ -77,6 +77,8 @@ class StackMachine{
         bool _jn_r();
         bool _jnz();
         bool _jnz_r();
+        bool _jz();
+        bool _jz_r();
 
     public:
         StackMachine(){
@@ -104,12 +106,13 @@ class StackMachine{
             map_instructions.insert(pair<string, InstructionData>("JMP",   InstructionData(JMP, 1, true, true)));
             map_instructions.insert(pair<string, InstructionData>("JN",   InstructionData(JN, 1, true, true)));
             map_instructions.insert(pair<string, InstructionData>("JNZ",   InstructionData(JNZ, 1, true, true)));
+            map_instructions.insert(pair<string, InstructionData>("JZ",   InstructionData(JZ, 1, true, true)));
         }
 
         void set_register(int r_code, int value);
         short int get_register(int r_code);
 
-        bool load_instructions(const char* filename);
+        bool load_instructions(string filename);
         bool execute_instructions();
         string get_error_message();
 };
@@ -200,7 +203,7 @@ bool StackMachine::_jmp(){
         return false;
     }
 
-    instruction_pointer = new_pos;
+    instruction_pointer = new_pos - 1;
     return true;
 }
 
@@ -212,7 +215,7 @@ bool StackMachine::_jmp_r(){
         return false;
     }
 
-    instruction_pointer = new_pos;
+    instruction_pointer = new_pos - 1;
     return true;
 }
 
@@ -228,7 +231,7 @@ bool StackMachine::_jn(){
         return false;
     }
 
-    instruction_pointer = new_pos;
+    instruction_pointer = new_pos - 1;
     return true;
 }
 
@@ -244,7 +247,7 @@ bool StackMachine::_jn_r(){
         return false;
     }    
 
-    instruction_pointer = new_pos;
+    instruction_pointer = new_pos - 1;
     return true;
 }
 
@@ -260,7 +263,7 @@ bool StackMachine::_jnz(){
         return false;
     }
 
-    instruction_pointer = new_pos;
+    instruction_pointer = new_pos - 1;
     return true;
 }
 
@@ -276,10 +279,41 @@ bool StackMachine::_jnz_r(){
         return false;
     }
 
-    instruction_pointer = new_pos;
+    instruction_pointer = new_pos - 1;
     return true;
 }
 
+bool StackMachine::_jz(){
+    if(!(flags & FLAG_ZERO)){
+        return true;
+    }
+
+    int new_pos = instructions[instruction_pointer].second[0];
+    if(new_pos > instructions.size()){
+        error_code = ERROR_JUMP_OUT_OF_BOUNDS;
+        error_line = instruction_pointer + 1;
+        return false;
+    }
+
+    instruction_pointer = new_pos - 1;
+    return true;
+}
+
+bool StackMachine::_jz_r(){
+    if(!(flags & FLAG_ZERO)){
+        return true;
+    }
+
+    int new_pos = get_register(instructions[instruction_pointer].second[0]);
+    if(new_pos > instructions.size()){
+        error_code = ERROR_JUMP_OUT_OF_BOUNDS;
+        error_line = instruction_pointer + 1;
+        return false;
+    }
+
+    instruction_pointer = new_pos - 1;
+    return true;
+}
 
 
 
@@ -447,6 +481,12 @@ bool StackMachine::execute_instructions(){
             cout << x << " ";
         } 
         cout << endl;
+        cout << "\tStack: [";
+        for (int i = 0; i < stack_pointer; i++){
+            cout << stack[i] << " ";
+        } 
+        cout << "]" << endl;
+
         
         switch(instructions[instruction_pointer].first){
             case ADD:
@@ -511,6 +551,12 @@ bool StackMachine::execute_instructions(){
                 break;
             case JNZ_R:
                 success = _jnz_r();
+                break;
+            case JZ:
+                success = _jz();
+                break;
+            case JZ_R:
+                success = _jz_r();
                 break;
 
 
@@ -584,7 +630,7 @@ short int StackMachine::get_register(int r_code){
 
 
 //Loads instructions from a file
-bool StackMachine::load_instructions(const char* filename){
+bool StackMachine::load_instructions(string filename){
     ifstream file;
     file.open(filename);
     string line;
@@ -699,8 +745,13 @@ bool StackMachine::load_instructions(const char* filename){
 
 int main(){
     StackMachine SM;
+    string filename;
 
-    bool result = SM.load_instructions("test.txt");
+    cout << "Path to program: ";
+    cin >> filename;
+
+
+    bool result = SM.load_instructions(filename);
     if (!result){
         cout << SM.get_error_message() << endl;
     }
