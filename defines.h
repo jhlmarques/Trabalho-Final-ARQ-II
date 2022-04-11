@@ -14,10 +14,21 @@ enum Instructions{
     PUSH,
     PUSH_R,
     TOP,
-    MOV
+    MOV,
+    JMP,
+    JMP_R,
+    JNZ,
+    JNZ_R,
+    JN,
+    JN_R
 };
 
 #define DEFAULT_REG 0
+
+//Flags
+#define FLAG_ZERO 1
+#define FLAG_NEGATIVE 2
+
 
 //Error codes
 #define ERROR_SYNTAX 0
@@ -27,3 +38,4 @@ enum Instructions{
 #define ERROR_PUSH_FULL_STACK 4
 #define ERROR_NOT_ENOUGH_PARAMETERS 5
 #define ERROR_INCORRECT_PARAMETER_TYPE 6
+#define ERROR_JUMP_OUT_OF_BOUNDS 7
