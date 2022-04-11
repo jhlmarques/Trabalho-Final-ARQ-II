@@ -17,6 +17,8 @@ enum Instructions{
     MOV,
     JMP,
     JMP_R,
+    JZ,
+    JZ_R,
     JNZ,
     JNZ_R,
     JN,
