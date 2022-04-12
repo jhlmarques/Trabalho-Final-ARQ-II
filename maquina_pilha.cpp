@@ -159,7 +159,7 @@ bool StackMachine::_push_r()
 {
     if (stack_pointer <= 127)
     {
-        stack[stack_pointer] = get_register(DEFAULT_REG);
+        stack[stack_pointer] = get_register(instructions[instruction_pointer].second[0]);
         stack_pointer++;
         return true;
     }
