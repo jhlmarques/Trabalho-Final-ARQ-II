@@ -87,6 +87,7 @@ class StackMachine{
             add_register("A");
             add_register("B");
             add_register("C");
+            add_register("D");
 
             //Fills the instructions map
             map_instructions.insert(pair<string, InstructionData>("ADD",    InstructionData(ADD, 0, false, false)));
