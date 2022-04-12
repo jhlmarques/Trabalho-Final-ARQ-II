@@ -643,6 +643,7 @@ bool StackMachine::load_instructions(string filename){
     int line_counter = 1;
     int param_separator; //Ending position of a parameter
     bool param_is_reg; //The parameter is a register
+    bool negative_number; //If the current parameter is a number, is it negative?
 
     while(getline(file, line)){
         parsed_parameters.clear();
@@ -702,12 +703,19 @@ bool StackMachine::load_instructions(string filename){
                         instruction_parameters.push_back(map_registers.at(parsed_reg)); //Converts the register's character to int
                     }
                     else{
+                        if(x[0] == '-'){
+                            x = x.substr(1);
+                            negative_number = true;
+                        }
+                        else{
+                            negative_number = false;
+                        }
                         if(x.find_first_not_of( "0123456789" ) != string::npos){
                             error_code = ERROR_INCORRECT_PARAMETER_TYPE;
                             error_line = line_counter;
                             return false;
                         }
-                        instruction_parameters.push_back(stoi(x)); //Converts the parameter to a number
+                        instruction_parameters.push_back(stoi(x) * (negative_number ? -1 : 1)); //Converts the parameter to a number
                     }
                 }
             }
